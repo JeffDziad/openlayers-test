@@ -2,8 +2,7 @@
   <div id="container">
     <div ref="map" id="map"></div>
     <div id="btn-menu">
-      <button class="btn" @click="getPosition">Refresh</button>
-      <button class="btn" @click="updatePosition">Refresh</button>
+      <button class="btn">Refresh</button>
     </div>
 
   </div>
@@ -32,6 +31,7 @@ export default {
   data: function() {
     return {
       map: null,
+      iss: null,
       latest: {
         "data": {
           "name": "iss",
@@ -83,26 +83,24 @@ export default {
         },
         "request": {}
       },
-      iss_icon: require('../assets/img/iss.png')
+      iss_icon: require('../assets/img/iss.png'),
+      updateIntervalId: null,
     }
   },
   methods: {
-    getPosition() {
+    updatePosition() {
       axios.get('https://api.wheretheiss.at/v1/satellites/25544')
           .then((res) => {
             this.latest = res;
-            this.updatePosition();
+            this.iss.setGeometry(new Point(fromLonLat([this.latest.data.longitude, this.latest.data.latitude])));
           })
           .catch((err) => {
             console.error(err);
           });
     },
-    updatePosition() {
-      console.log(this.map.layers);
-    }
   },
   mounted() {
-    const issIcon = new Feature({
+    this.iss = new Feature({
       geometry: new Point(fromLonLat([this.latest.data.longitude, this.latest.data.latitude])),
       name: 'ISS',
     });
@@ -115,7 +113,7 @@ export default {
           }),
           new VectorLayer({
             source: new VectorSource({
-              features: [issIcon]
+              features: [this.iss]
             }),
             style: new Style({
               image: new Icon({
@@ -123,7 +121,7 @@ export default {
                 src: this.iss_icon,
               })
             })
-          })
+          }),
       ],
       view: new View({
         zoom: 0,
@@ -131,6 +129,7 @@ export default {
         constrainResolution: true,
       })
     });
+    // this.updateIntervalId = setInterval(this.updatePosition,10000);
   }
 }
 </script>
