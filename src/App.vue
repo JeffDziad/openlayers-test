@@ -1,6 +1,6 @@
 <template>
-  <iss-tracker></iss-tracker>
-  <notification-bar></notification-bar>
+  <iss-tracker @notify="n"></iss-tracker>
+  <notification-bar ref="notifier"></notification-bar>
 
 </template>
 
@@ -13,10 +13,14 @@ export default {
   components: {
     NotificationBar,
     IssTracker
+  },
+  methods: {
+    n(d) {
+      this.$refs.notifier.notify(d.text, d.color);
+    }
   }
 }
 </script>
 
 <style>
-
 </style>

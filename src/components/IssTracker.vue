@@ -18,8 +18,10 @@ import Style from 'ol/style/Style';
 import Icon from 'ol/style/Icon';
 import View from 'ol/View';
 import Map from 'ol/Map';
+import Stroke from 'ol/style/Stroke'
 import TileLayer from 'ol/layer/Tile';
 import OSM from 'ol/source/OSM';
+import LineString from 'ol/geom/LineString';
 import 'ol/ol.css';
 
 import axios from 'axios';
@@ -27,11 +29,13 @@ import axios from 'axios';
 export default {
   name: "IssTracker",
   components: {},
-  props: {},
+  props: [],
   data: function() {
     return {
       map: null,
       iss: null,
+      issPath: null,
+      pointHistory: [],
       latest: {
         "data": {
           "name": "iss",
@@ -85,6 +89,14 @@ export default {
       },
       iss_icon: require('../assets/img/iss.png'),
       updateIntervalId: null,
+      vectorSource: null,
+      vlStyle: null,
+      lineStyle: new Style({
+        stroke: new Stroke({
+          color: '#d12710',
+          width: 2,
+        })
+      })
     }
   },
   methods: {
@@ -92,19 +104,53 @@ export default {
       axios.get('https://api.wheretheiss.at/v1/satellites/25544')
           .then((res) => {
             this.latest = res;
-            this.iss.setGeometry(new Point(fromLonLat([this.latest.data.longitude, this.latest.data.latitude])));
+            let lonlat = fromLonLat([this.latest.data.longitude, this.latest.data.latitude]);
+            this.pointHistory.push(lonlat);
+            this.iss.setGeometry(new Point(lonlat));
+            this.addIssPositionPoint();
           })
           .catch((err) => {
+            this.$emit("notify", {text: err, color: 'lightcoral'});
             console.error(err);
           });
     },
+    addIssPositionPoint() {
+      this.issPath.setGeometry(new LineString(this.pointHistory));
+      if(this.pointHistory.length > 1) {
+        this.issPath.setStyle(this.lineStyle);
+      }
+    }
   },
   mounted() {
+    // Features
     this.iss = new Feature({
       geometry: new Point(fromLonLat([this.latest.data.longitude, this.latest.data.latitude])),
       name: 'ISS',
     });
+    this.issPath = new Feature({
+      geometry: new Point(fromLonLat([this.latest.data.longitude, this.latest.data.latitude])),
+      name: 'ISS-PATH',
+    });
+    this.issPath.setStyle(new Style({
+      stroke: new Stroke({
+        color: 'rgba(0, 0, 0, 0)',
+        width: 0,
+      })
+    }));
 
+    // Create Vector Layer and add Iss as a feature
+    this.vectorSource = new VectorSource({
+      features: [this.iss, this.issPath]
+    });
+    //
+    this.vlStyle = new Style({
+      image: new Icon({
+        scale: 0.1,
+        src: this.iss_icon,
+      })
+    });
+
+    // Create map
     this.map = new Map({
       target: this.$refs['map'],
       layers: [
@@ -112,15 +158,8 @@ export default {
             source: new OSM(),
           }),
           new VectorLayer({
-            source: new VectorSource({
-              features: [this.iss]
-            }),
-            style: new Style({
-              image: new Icon({
-                scale: 0.1,
-                src: this.iss_icon,
-              })
-            })
+            source: this.vectorSource,
+            style: this.vlStyle,
           }),
       ],
       view: new View({
@@ -129,7 +168,7 @@ export default {
         constrainResolution: true,
       })
     });
-    this.updateIntervalId = setInterval(this.updatePosition,10000);
+    this.updateIntervalId = setInterval(this.updatePosition,2000);
   }
 }
 </script>
