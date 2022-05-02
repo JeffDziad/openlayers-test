@@ -129,7 +129,7 @@ export default {
         constrainResolution: true,
       })
     });
-    // this.updateIntervalId = setInterval(this.updatePosition,10000);
+    this.updateIntervalId = setInterval(this.updatePosition,10000);
   }
 }
 </script>
